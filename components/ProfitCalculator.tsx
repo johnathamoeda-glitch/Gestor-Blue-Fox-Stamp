@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { DollarSign, Scissors, Palette, ShoppingBag, Calculator, RefreshCw, TrendingUp, AlertTriangle, Search, User, Package, ArrowRight, X, ChevronDown } from 'lucide-react';
+import { DollarSign, Scissors, Palette, ShoppingBag, Calculator, RefreshCw, TrendingUp, AlertTriangle, Search, User, Package, ArrowRight, X, ChevronDown, Save, Check } from 'lucide-react';
 import { Order } from '../types';
+import { getProfitCalculationByOrderId, saveProfitCalculation } from '../services/storageService';
 
 interface ProfitCalculatorProps {
     orders: Order[];
@@ -15,10 +16,12 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
   const [costPrint, setCostPrint] = useState<string>('');
   const [costMisc, setCostMisc] = useState<string>('');
   
-  // Autocomplete State
+  // UI State
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Close suggestions when clicking outside
@@ -73,6 +76,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
     setSelectedOrderId('');
     setSearchTerm('');
     setShowSuggestions(false);
+    setSaveSuccess(false);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,14 +84,51 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
       setShowSuggestions(true);
       if (selectedOrderId) {
           setSelectedOrderId(''); // Clear selection if typing new search
+          setSaveSuccess(false);
       }
   };
 
   const handleSuggestionClick = (order: Order) => {
       setSearchTerm(order.customerName);
       setSelectedOrderId(order.id);
-      setSalePrice(order.totalValue.toString());
       setShowSuggestions(false);
+      setSaveSuccess(false);
+
+      // Check if there is saved data for this order
+      const savedData = getProfitCalculationByOrderId(order.id);
+
+      if (savedData) {
+          // Load saved data
+          setSalePrice(savedData.revenue.toString());
+          setCostFabric(savedData.costFabric > 0 ? savedData.costFabric.toString() : '');
+          setCostSewing(savedData.costSewing > 0 ? savedData.costSewing.toString() : '');
+          setCostPrint(savedData.costPrint > 0 ? savedData.costPrint.toString() : '');
+          setCostMisc(savedData.costMisc > 0 ? savedData.costMisc.toString() : '');
+      } else {
+          // Default: Load just the total value from order and clear costs
+          setSalePrice(order.totalValue.toString());
+          setCostFabric('');
+          setCostSewing('');
+          setCostPrint('');
+          setCostMisc('');
+      }
+  };
+
+  const handleSaveCalculation = () => {
+    if (!selectedOrderId) return;
+
+    saveProfitCalculation({
+        orderId: selectedOrderId,
+        revenue: calculations.revenue,
+        costFabric: calculations.fabric,
+        costSewing: calculations.sewing,
+        costPrint: calculations.print,
+        costMisc: calculations.misc,
+        lastUpdated: Date.now()
+    });
+
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   // Filter orders based on search term
@@ -133,7 +174,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible relative">
              <div className="bg-gray-50 px-6 py-3 border-b border-gray-100 flex items-center gap-2">
                  <Search size={16} className="text-gray-400" />
-                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Importar Dados</span>
+                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Importar e Salvar</span>
              </div>
              
              <div className="p-6">
@@ -146,13 +187,13 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                             value={searchTerm}
                             onChange={handleSearchChange}
                             onFocus={() => setShowSuggestions(true)}
-                            placeholder="Digite o nome do cliente..."
+                            placeholder="Digite o nome do cliente para carregar..."
                             className="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-3 px-4 pl-10 text-base bg-white"
                         />
                         <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                         {searchTerm && (
                             <button 
-                                onClick={() => { setSearchTerm(''); setSelectedOrderId(''); }}
+                                onClick={() => { setSearchTerm(''); setSelectedOrderId(''); setSaveSuccess(false); }}
                                 className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
                             >
                                 <X size={18} />
@@ -191,24 +232,31 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                 </div>
 
                 {selectedOrder && (
-                    <div className="flex items-start gap-4 bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl animate-fade-in">
-                        <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600 hidden sm:block">
-                            <User size={20} />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-bold text-indigo-900">{selectedOrder.customerName}</p>
-                            <p className="text-xs text-indigo-700 mt-0.5 flex items-center gap-1">
-                                <Package size={12} />
-                                {selectedOrder.description}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2 text-xs text-indigo-500">
-                                <span className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-100">
-                                    Venda: R$ {selectedOrder.totalValue.toFixed(2)}
-                                </span>
-                                <ArrowRight size={12} />
-                                <span>Valor preenchido abaixo</span>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl animate-fade-in mt-4">
+                        <div className="flex items-start gap-4 flex-1 w-full">
+                            <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600 hidden sm:block">
+                                <User size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-bold text-indigo-900">{selectedOrder.customerName}</p>
+                                <p className="text-xs text-indigo-700 mt-0.5 flex items-center gap-1">
+                                    <Package size={12} />
+                                    {selectedOrder.description}
+                                </p>
                             </div>
                         </div>
+                        
+                        <button
+                            onClick={handleSaveCalculation}
+                            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm ${
+                                saveSuccess 
+                                ? 'bg-green-500 text-white hover:bg-green-600' 
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
+                        >
+                            {saveSuccess ? <Check size={16} /> : <Save size={16} />}
+                            {saveSuccess ? 'Salvo!' : 'Salvar Cálculo'}
+                        </button>
                     </div>
                 )}
              </div>
@@ -237,7 +285,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                             min="0"
                             step="0.01"
                             value={salePrice}
-                            onChange={(e) => setSalePrice(e.target.value)}
+                            onChange={(e) => { setSalePrice(e.target.value); setSaveSuccess(false); }}
                             className="block w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-0 text-2xl font-bold text-gray-800 transition-colors bg-gray-50 focus:bg-white placeholder-gray-300"
                             placeholder="0.00"
                         />
@@ -253,7 +301,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                         <input
                             type="number"
                             value={costFabric}
-                            onChange={(e) => setCostFabric(e.target.value)}
+                            onChange={(e) => { setCostFabric(e.target.value); setSaveSuccess(false); }}
                             className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5"
                             placeholder="0.00"
                         />
@@ -267,7 +315,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                         <input
                             type="number"
                             value={costSewing}
-                            onChange={(e) => setCostSewing(e.target.value)}
+                            onChange={(e) => { setCostSewing(e.target.value); setSaveSuccess(false); }}
                             className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2.5"
                             placeholder="0.00"
                         />
@@ -281,7 +329,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                         <input
                             type="number"
                             value={costPrint}
-                            onChange={(e) => setCostPrint(e.target.value)}
+                            onChange={(e) => { setCostPrint(e.target.value); setSaveSuccess(false); }}
                             className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 p-2.5"
                             placeholder="0.00"
                         />
@@ -295,7 +343,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ orders }) =>
                         <input
                             type="number"
                             value={costMisc}
-                            onChange={(e) => setCostMisc(e.target.value)}
+                            onChange={(e) => { setCostMisc(e.target.value); setSaveSuccess(false); }}
                             className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 p-2.5"
                             placeholder="0.00"
                         />

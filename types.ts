@@ -43,3 +43,13 @@ export interface Activity {
   priority: ActivityPriority;
   completed: boolean;
 }
+
+export interface ProfitCalculation {
+  orderId: string;
+  revenue: number;
+  costFabric: number;
+  costSewing: number;
+  costPrint: number;
+  costMisc: number;
+  lastUpdated: number;
+}

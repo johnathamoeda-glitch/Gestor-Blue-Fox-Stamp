@@ -1,7 +1,8 @@
-import { Order, Activity, OrderStatus } from '../types';
+import { Order, Activity, OrderStatus, ProfitCalculation } from '../types';
 
 const STORAGE_KEY = 'estampa_gestor_orders';
 const ACTIVITIES_STORAGE_KEY = 'gestor_bfs_activities';
+const PROFIT_CALC_STORAGE_KEY = 'gestor_bfs_profits';
 
 // --- Helper for ID Generation (replaces crypto.randomUUID for better compatibility) ---
 const generateId = (): string => {
@@ -86,4 +87,33 @@ export const toggleActivityCompletion = (id: string): void => {
     activity.completed = !activity.completed;
     saveActivity(activity);
   }
+};
+
+// --- Profit Calculations ---
+
+export const getProfitCalculations = (): ProfitCalculation[] => {
+  try {
+    const data = localStorage.getItem(PROFIT_CALC_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const getProfitCalculationByOrderId = (orderId: string): ProfitCalculation | undefined => {
+  const calcs = getProfitCalculations();
+  return calcs.find(c => c.orderId === orderId);
+};
+
+export const saveProfitCalculation = (calc: ProfitCalculation): void => {
+  const calcs = getProfitCalculations();
+  const existingIndex = calcs.findIndex(c => c.orderId === calc.orderId);
+  
+  if (existingIndex >= 0) {
+    calcs[existingIndex] = calc;
+  } else {
+    calcs.push(calc);
+  }
+  
+  localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(calcs));
 };
