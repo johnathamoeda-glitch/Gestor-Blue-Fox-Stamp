@@ -10,11 +10,11 @@ export type OrderType = 'Casa' | 'Terceirizado';
 
 export interface Order {
   id: string;
-  orderType: OrderType; // Novo campo para identificar a origem
+  orderType: OrderType;
   customerName: string;
   customerPhone: string;
   description: string;
-  itemsDetails: string; // Detalhes como tamanhos, cores
+  itemsDetails: string;
   totalValue: number;
   paidValue: number;
   createdAt: number; // Timestamp
@@ -22,7 +22,8 @@ export interface Order {
   status: OrderStatus;
   notaFiscalIssued: boolean;
   notes?: string;
-  remainingPaymentDate?: number; // Data combinada para o pagamento do restante
+  remainingPaymentDate?: number;
+  createdBy?: string; // Nome do usuário que criou o pedido
 }
 
 export interface DashboardStats {

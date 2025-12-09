@@ -8,12 +8,12 @@ import { ScheduledActivities } from './components/ScheduledActivities';
 import { Analytics } from './components/Analytics';
 import { ProfitCalculator } from './components/ProfitCalculator';
 import { LoginScreen } from './components/LoginScreen';
-import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, User } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('bfs_auth_token') === 'authenticated';
+  // Authentication State holding the username
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    return sessionStorage.getItem('bfs_user_session');
   });
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -25,27 +25,31 @@ const App: React.FC = () => {
   const [selectedOrderType, setSelectedOrderType] = useState<OrderType>('Casa');
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (currentUser) {
       refreshOrders();
     }
-  }, [isAuthenticated]);
+  }, [currentUser]);
 
   const refreshOrders = () => {
     setOrders(getOrders());
   };
 
   const handleLogin = (u: string, p: string): boolean => {
-    if (u === 'bluefox' && p === 'stamp375') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('bfs_auth_token', 'authenticated');
+    const validUsers = ['Luzinho', 'Luciano', 'Joohn'];
+    // Normalizing input for case-insensitive username check
+    const normalizedUser = validUsers.find(user => user.toLowerCase() === u.toLowerCase());
+
+    if (normalizedUser && p === 'fox375') {
+      setCurrentUser(normalizedUser);
+      sessionStorage.setItem('bfs_user_session', normalizedUser);
       return true;
     }
     return false;
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('bfs_auth_token');
+    setCurrentUser(null);
+    sessionStorage.removeItem('bfs_user_session');
     setView('dashboard'); // Reset view on logout
   };
 
@@ -79,7 +83,7 @@ const App: React.FC = () => {
   };
 
   // Login Guard
-  if (!isAuthenticated) {
+  if (!currentUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
@@ -92,7 +96,12 @@ const App: React.FC = () => {
             <div className="bg-indigo-600 p-2 rounded-lg text-white">
                 <Printer size={24} />
             </div>
-            <h1 className="text-xl font-bold text-gray-800">Gestor Blue Fox Stamp</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800 leading-tight">Gestor Blue Fox Stamp</h1>
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                <User size={10} /> Olá, {currentUser}
+              </p>
+            </div>
         </div>
 
         <button 
@@ -165,7 +174,10 @@ const App: React.FC = () => {
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
                     <Printer size={20} />
                 </div>
-                <h1 className="text-lg font-bold text-gray-800">Gestor Blue Fox Stamp</h1>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-800">Gestor Blue Fox Stamp</h1>
+                  <span className="text-[10px] text-gray-500 block">Olá, {currentUser}</span>
+                </div>
             </div>
             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600">
                 <LogOut size={20} />
@@ -218,6 +230,7 @@ const App: React.FC = () => {
             <OrderForm 
               existingOrder={editingOrder} 
               initialOrderType={selectedOrderType}
+              currentUser={currentUser}
               onSave={handleSaveOrder} 
               onCancel={() => setView('list')} 
             />

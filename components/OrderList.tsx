@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Order, OrderStatus } from '../types';
-import { Edit2, Trash2, AlertTriangle, FileText, Search, CalendarClock, Tag } from 'lucide-react';
+import { Edit2, Trash2, AlertTriangle, FileText, Search, CalendarClock, Tag, User } from 'lucide-react';
 import { PeriodFilter } from './PeriodFilter';
 import { FilterType, filterListByDate } from '../services/dateUtils';
 
@@ -146,6 +146,13 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onEdit, onDelete }
                                 <CalendarClock size={14} />
                                 {new Date(order.createdAt).toLocaleDateString()}
                             </span>
+                            {/* Discrete User Tag */}
+                            {order.createdBy && (
+                                <span className="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 px-1.5 rounded border border-gray-100" title="Criado por">
+                                    <User size={10} />
+                                    {order.createdBy}
+                                </span>
+                            )}
                         </div>
                     </div>
 

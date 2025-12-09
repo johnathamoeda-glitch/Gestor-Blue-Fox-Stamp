@@ -5,11 +5,12 @@ import { Save, X, User, AlertCircle, DollarSign, Tag, CheckCircle2 } from 'lucid
 interface OrderFormProps {
   existingOrder?: Order;
   initialOrderType?: OrderType;
+  currentUser: string;
   onSave: (order: Order) => void;
   onCancel: () => void;
 }
 
-export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrderType = 'Casa', onSave, onCancel }) => {
+export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrderType = 'Casa', currentUser, onSave, onCancel }) => {
   const [formData, setFormData] = useState<Partial<Order>>({
     orderType: initialOrderType,
     status: OrderStatus.PENDING,
@@ -19,16 +20,21 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrde
     createdAt: Date.now(),
     deliveryDate: Date.now() + 86400000 * 3, // Default 3 days ahead
     remainingPaymentDate: undefined,
+    createdBy: currentUser,
   });
 
   useEffect(() => {
     if (existingOrder) {
       setFormData(existingOrder);
     } else {
-        // Ensure the type is set correctly for new orders
-        setFormData(prev => ({ ...prev, orderType: initialOrderType }));
+        // Ensure the type and creator is set correctly for new orders
+        setFormData(prev => ({ 
+            ...prev, 
+            orderType: initialOrderType,
+            createdBy: currentUser 
+        }));
     }
-  }, [existingOrder, initialOrderType]);
+  }, [existingOrder, initialOrderType, currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -62,6 +68,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrde
       ...formData,
       // Fallback for older records if edited
       orderType: formData.orderType || 'Casa', 
+      createdBy: formData.createdBy || currentUser, // Ensure creator exists
       id: existingOrder?.id || crypto.randomUUID(),
     } as Order;
     onSave(orderToSave);
@@ -282,6 +289,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrde
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="mr-auto text-xs text-gray-400 flex items-center gap-1">
+             Criado por: {formData.createdBy || currentUser}
+          </div>
           <button
             type="button"
             onClick={onCancel}
