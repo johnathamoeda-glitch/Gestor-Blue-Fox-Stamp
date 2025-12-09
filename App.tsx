@@ -11,7 +11,7 @@ import { Expenses } from './components/Expenses';
 import { Chat } from './components/Chat';
 import { LoginScreen } from './components/LoginScreen';
 import { UserProfile } from './components/UserProfile';
-import { LayoutDashboard, PlusCircle, List, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, Wallet, MessageCircle, User, Settings, CloudDownload } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, Wallet, MessageCircle, User, Settings, DownloadCloud } from 'lucide-react';
 
 // Custom T-Shirt Icon Component
 const TShirtIcon = ({ size = 24, className = "" }: { size?: number, className?: string }) => (
@@ -215,7 +215,7 @@ const App: React.FC = () => {
           className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 text-orange-500 hover:text-orange-600 hover:bg-orange-50`}
           title="Backup e Dados"
         >
-          <CloudDownload size={24} />
+          <DownloadCloud size={24} />
           <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Backup</span>
         </button>
         
