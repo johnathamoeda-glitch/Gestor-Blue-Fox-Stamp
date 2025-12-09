@@ -2,15 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { Order, OrderStatus } from '../types';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell
+  PieChart, Pie, Cell
 } from 'recharts';
-import { Calendar, Filter, TrendingUp, DollarSign, Target, PieChart as PieChartIcon, Activity } from 'lucide-react';
+import { Activity as ActivityIcon, TrendingUp, DollarSign, Target, PieChart as PieChartIcon } from 'lucide-react';
+import { PeriodFilter } from './PeriodFilter';
+import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
 
 interface AnalyticsProps {
   orders: Order[];
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const STATUS_COLORS: Record<string, string> = {
   [OrderStatus.PENDING]: '#FBBF24', // Amber
   [OrderStatus.IN_PROGRESS]: '#60A5FA', // Blue
@@ -20,35 +21,15 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterValue, setFilterValue] = useState<string>('');
 
-  // 1. Extract available months
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    orders.forEach(order => {
-      const date = new Date(order.createdAt);
-      months.add(`${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`);
-    });
-    return Array.from(months).sort().reverse();
-  }, [orders]);
-
-  // 2. Filter orders
+  // 1. Filter orders
   const filteredOrders = useMemo(() => {
-    if (selectedMonth === 'all') return orders;
-    const [year, month] = selectedMonth.split('-');
-    return orders.filter(order => {
-      const date = new Date(order.createdAt);
-      return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month);
-    });
-  }, [orders, selectedMonth]);
+    return filterListByDate(orders, 'createdAt', filterType, filterValue);
+  }, [orders, filterType, filterValue]);
 
-  const formatMonthLabel = (yearMonth: string) => {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month), 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
-
-  // 3. KPI Calculations
+  // 2. KPI Calculations
   const kpis = useMemo(() => {
     const totalRevenue = filteredOrders.reduce((acc, o) => acc + o.totalValue, 0);
     const totalReceived = filteredOrders.reduce((acc, o) => acc + o.paidValue, 0);
@@ -62,18 +43,27 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
     return { totalRevenue, totalReceived, totalPending, avgTicket, receiptRate, orderCount };
   }, [filteredOrders]);
 
-  // 4. Data for Timeline Chart (Financial Evolution)
+  // 3. Data for Timeline Chart (Financial Evolution)
   const timelineData = useMemo(() => {
-    const dataMap = new Map<string, { date: string, recebido: number, pendente: number }>();
+    const dataMap = new Map<string, { date: string, recebido: number, pendente: number, sortKey: number }>();
 
     filteredOrders.forEach(order => {
       const d = new Date(order.createdAt);
-      // If "All Time", group by Month (YYYY-MM). If Specific Month, group by Day (DD/MM).
-      const key = selectedMonth === 'all' 
-        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-        : `${d.getDate()}/${d.getMonth() + 1}`;
+      let key = '';
+      let sortKey = d.getTime();
 
-      const current = dataMap.get(key) || { date: key, recebido: 0, pendente: 0 };
+      // Dynamic Grouping based on Filter Level
+      if (filterType === 'all' || filterType === 'year') {
+        // Group by Month (YYYY-MM)
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        sortKey = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      } else {
+         // Group by Day (DD/MM)
+         key = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+         sortKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      }
+
+      const current = dataMap.get(key) || { date: key, recebido: 0, pendente: 0, sortKey };
       
       current.recebido += order.paidValue;
       current.pendente += (order.totalValue - order.paidValue);
@@ -81,16 +71,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
     });
 
     // Convert map to array and sort
-    return Array.from(dataMap.values()).sort((a, b) => {
-        if (selectedMonth === 'all') return a.date.localeCompare(b.date);
-        // Simple day sort for DD/MM format
-        const [dayA] = a.date.split('/');
-        const [dayB] = b.date.split('/');
-        return parseInt(dayA) - parseInt(dayB);
-    });
-  }, [filteredOrders, selectedMonth]);
+    return Array.from(dataMap.values()).sort((a, b) => a.sortKey - b.sortKey);
+  }, [filteredOrders, filterType]);
 
-  // 5. Data for Status Distribution
+  // 4. Data for Status Distribution
   const statusData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredOrders.forEach(o => {
@@ -103,35 +87,27 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
     }));
   }, [filteredOrders]);
 
+  const periodLabel = useMemo(() => getPeriodLabel(filterType, filterValue), [filterType, filterValue]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       
       {/* Header & Filter */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <Activity className="text-indigo-600" />
+                <ActivityIcon className="text-indigo-600" />
                 Relatórios Detalhados
             </h2>
             <p className="text-sm text-gray-500">Análise profunda de faturamento e produção</p>
         </div>
-        
-        <div className="relative w-full sm:w-64">
-          <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="pl-10 block w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border appearance-none cursor-pointer hover:bg-white transition-colors capitalize"
-          >
-            <option value="all">Todo o Histórico</option>
-            {availableMonths.map(monthStr => (
-              <option key={monthStr} value={monthStr}>
-                {formatMonthLabel(monthStr)}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
+
+      <PeriodFilter 
+        filterType={filterType} 
+        filterValue={filterValue} 
+        onFilterChange={(t, v) => { setFilterType(t); setFilterValue(v); }} 
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -155,7 +131,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
 
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
             <div className="flex items-center gap-2 mb-2 text-red-500">
-                <Activity size={18} />
+                <ActivityIcon size={18} />
                 <span className="text-sm font-medium">Pendente de Recebimento</span>
             </div>
             <p className="text-2xl font-bold text-red-500">R$ {kpis.totalPending.toFixed(2)}</p>
@@ -192,7 +168,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
                 </ResponsiveContainer>
             </div>
             <p className="text-xs text-gray-400 text-center mt-2">
-                {selectedMonth === 'all' ? 'Agrupado por Mês (Ano-Mês)' : 'Agrupado por Dia (Dia/Mês)'}
+                {(filterType === 'all' || filterType === 'year') ? 'Agrupado por Mês (Ano-Mês)' : 'Agrupado por Dia (Dia/Mês)'}
             </p>
         </div>
 
@@ -229,7 +205,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ orders }) => {
               <PieChartIcon size={20} /> Resumo do Período
           </h4>
           <p className="text-indigo-800 text-sm leading-relaxed">
-              No período selecionado ({selectedMonth === 'all' ? 'Todo o Histórico' : formatMonthLabel(selectedMonth)}), 
+              No período selecionado ({periodLabel || 'Todo o Histórico'}), 
               sua estamparia processou <strong>{kpis.orderCount} pedidos</strong>. 
               O faturamento total foi de <strong>R$ {kpis.totalRevenue.toFixed(2)}</strong>, sendo que 
               já foram recebidos <strong>R$ {kpis.totalReceived.toFixed(2)} ({kpis.receiptRate.toFixed(1)}%)</strong>.

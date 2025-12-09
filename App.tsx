@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Order } from './types';
-import { getOrders, saveOrder, deleteOrder, generateMockOrders } from './services/storageService';
+import { Order, OrderType } from './types';
+import { getOrders, saveOrder, deleteOrder } from './services/storageService';
 import { Dashboard } from './components/Dashboard';
 import { OrderList } from './components/OrderList';
 import { OrderForm } from './components/OrderForm';
 import { ScheduledActivities } from './components/ScheduledActivities';
 import { Analytics } from './components/Analytics';
+import { ProfitCalculator } from './components/ProfitCalculator';
 import { LoginScreen } from './components/LoginScreen';
-import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, Database, LogOut } from 'lucide-react';
-
-// Use standard Tailwind breakpoint classes in JSX for responsive layout logic if needed, 
-// but here we just toggle views.
+import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator } from 'lucide-react';
 
 const App: React.FC = () => {
   // Authentication State
@@ -19,8 +17,12 @@ const App: React.FC = () => {
   });
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [view, setView] = useState<'dashboard' | 'list' | 'form' | 'activities' | 'analytics'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'list' | 'form' | 'activities' | 'analytics' | 'calculator'>('dashboard');
   const [editingOrder, setEditingOrder] = useState<Order | undefined>(undefined);
+  
+  // Logic for selecting order type
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [selectedOrderType, setSelectedOrderType] = useState<OrderType>('Casa');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -61,25 +63,19 @@ const App: React.FC = () => {
 
   const handleEditOrder = (order: Order) => {
     setEditingOrder(order);
+    setSelectedOrderType(order.orderType || 'Casa');
     setView('form');
   };
 
-  const handleNewOrder = () => {
-    setEditingOrder(undefined);
-    setView('form');
+  const openNewOrderModal = () => {
+    setIsNewOrderModalOpen(true);
   };
 
-  const handleGenerateData = () => {
-    if(window.confirm('Isso irá substituir os pedidos atuais por 250 pedidos de teste. Continuar?')) {
-        try {
-            generateMockOrders();
-            refreshOrders();
-            alert('Dados gerados com sucesso!');
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao gerar dados: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-        }
-    }
+  const handleStartNewOrder = (type: OrderType) => {
+      setSelectedOrderType(type);
+      setIsNewOrderModalOpen(false);
+      setEditingOrder(undefined);
+      setView('form');
   };
 
   // Login Guard
@@ -88,7 +84,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
+    <div className="min-h-screen bg-gray-50 font-sans text-slate-800 relative">
       {/* Sidebar / Navigation */}
       <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 z-40 md:top-0 md:left-0 md:w-64 md:h-screen md:border-t-0 md:border-r flex md:flex-col justify-around md:justify-start md:p-4 shadow-lg md:shadow-none">
         
@@ -132,7 +128,15 @@ const App: React.FC = () => {
         </button>
 
         <button 
-          onClick={handleNewOrder}
+          onClick={() => setView('calculator')}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'calculator' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+        >
+          <Calculator size={24} />
+          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Calculadora</span>
+        </button>
+
+        <button 
+          onClick={openNewOrderModal}
           className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:mt-4 md:shadow-md"
         >
           <PlusCircle size={24} />
@@ -141,15 +145,6 @@ const App: React.FC = () => {
         
         <div className="hidden md:block flex-grow"></div>
         
-        <button 
-          onClick={handleGenerateData}
-          className="hidden md:flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all mb-2"
-          title="Gera 250 pedidos aleatórios para teste"
-        >
-          <Database size={20} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Gerar Dados Teste</span>
-        </button>
-
         <button 
           onClick={handleLogout}
           className="hidden md:flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-all mb-2"
@@ -194,7 +189,7 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
                <h2 className="text-2xl font-bold text-gray-800">Meus Pedidos</h2>
-               <button onClick={handleNewOrder} className="md:hidden bg-indigo-600 text-white p-2 rounded-full shadow-lg">
+               <button onClick={openNewOrderModal} className="md:hidden bg-indigo-600 text-white p-2 rounded-full shadow-lg">
                  <PlusCircle size={24} />
                </button>
             </div>
@@ -210,6 +205,10 @@ const App: React.FC = () => {
            <ScheduledActivities />
         )}
 
+        {view === 'calculator' && (
+            <ProfitCalculator orders={orders} />
+        )}
+
         {view === 'form' && (
           <div className="space-y-6 max-w-3xl mx-auto">
              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onClick={() => setView('list')}>
@@ -218,12 +217,56 @@ const App: React.FC = () => {
              </h2>
             <OrderForm 
               existingOrder={editingOrder} 
+              initialOrderType={selectedOrderType}
               onSave={handleSaveOrder} 
               onCancel={() => setView('list')} 
             />
           </div>
         )}
       </main>
+
+      {/* New Order Type Selection Modal */}
+      {isNewOrderModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full animate-fade-in-up">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold text-gray-800">Criar Novo Pedido</h3>
+                      <button onClick={() => setIsNewOrderModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                          <X size={24} />
+                      </button>
+                  </div>
+                  <p className="text-gray-600 mb-6 text-sm">Selecione o tipo de pedido para iniciar o cadastro:</p>
+                  
+                  <div className="space-y-3">
+                      <button 
+                          onClick={() => handleStartNewOrder('Casa')}
+                          className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-indigo-100 hover:border-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 transition-all group"
+                      >
+                          <div className="bg-indigo-100 text-indigo-600 p-3 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Home size={24} />
+                          </div>
+                          <div className="text-left">
+                              <p className="font-bold text-gray-800 group-hover:text-indigo-700">Pedido da Casa</p>
+                              <p className="text-xs text-gray-500">Pedidos internos padrão</p>
+                          </div>
+                      </button>
+
+                      <button 
+                          onClick={() => handleStartNewOrder('Terceirizado')}
+                          className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-orange-100 hover:border-orange-500 bg-orange-50/50 hover:bg-orange-50 transition-all group"
+                      >
+                          <div className="bg-orange-100 text-orange-600 p-3 rounded-lg group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                              <Briefcase size={24} />
+                          </div>
+                          <div className="text-left">
+                              <p className="font-bold text-gray-800 group-hover:text-orange-700">Pedido Terceirizado</p>
+                              <p className="text-xs text-gray-500">Para clientes parceiros</p>
+                          </div>
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

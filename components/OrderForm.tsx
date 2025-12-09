@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Order, OrderStatus } from '../types';
-import { Save, X, Calendar, DollarSign, User, AlertCircle } from 'lucide-react';
+import { Order, OrderStatus, OrderType } from '../types';
+import { Save, X, User, AlertCircle, DollarSign, Tag, CheckCircle2 } from 'lucide-react';
 
 interface OrderFormProps {
   existingOrder?: Order;
+  initialOrderType?: OrderType;
   onSave: (order: Order) => void;
   onCancel: () => void;
 }
 
-export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onCancel }) => {
+export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrderType = 'Casa', onSave, onCancel }) => {
   const [formData, setFormData] = useState<Partial<Order>>({
+    orderType: initialOrderType,
     status: OrderStatus.PENDING,
     notaFiscalIssued: false,
     paidValue: 0,
@@ -22,8 +24,11 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
   useEffect(() => {
     if (existingOrder) {
       setFormData(existingOrder);
+    } else {
+        // Ensure the type is set correctly for new orders
+        setFormData(prev => ({ ...prev, orderType: initialOrderType }));
     }
-  }, [existingOrder]);
+  }, [existingOrder, initialOrderType]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -41,10 +46,22 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
     }));
   };
 
+  const handleMarkAsFullyPaid = () => {
+    if (formData.totalValue) {
+        setFormData(prev => ({
+            ...prev,
+            paidValue: prev.totalValue,
+            remainingPaymentDate: undefined // Clear reminder if paid
+        }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const orderToSave = {
       ...formData,
+      // Fallback for older records if edited
+      orderType: formData.orderType || 'Casa', 
       id: existingOrder?.id || crypto.randomUUID(),
     } as Order;
     onSave(orderToSave);
@@ -53,12 +70,23 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
   const pendingValue = (formData.totalValue || 0) - (formData.paidValue || 0);
   const hasPending = pendingValue > 0.01;
 
+  const isOutsourced = formData.orderType === 'Terceirizado';
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">
-          {existingOrder ? 'Editar Pedido' : 'Novo Pedido'}
-        </h2>
+      <div className={`px-6 py-4 border-b border-gray-100 flex justify-between items-center ${isOutsourced ? 'bg-orange-50' : 'bg-indigo-50'}`}>
+        <div className="flex flex-col">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            {existingOrder ? 'Editar Pedido' : 'Novo Pedido'}
+            <span className={`text-xs px-2 py-1 rounded-full border uppercase tracking-wide flex items-center gap-1 ${isOutsourced ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-indigo-100 text-indigo-700 border-indigo-200'}`}>
+                <Tag size={12} />
+                {formData.orderType || 'Casa'}
+            </span>
+            </h2>
+            <span className="text-xs text-gray-500 mt-1">
+                {isOutsourced ? 'Pedido realizado para parceiro terceirizado.' : 'Pedido interno da estamparia.'}
+            </span>
+        </div>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
             <X size={24} />
         </button>
@@ -68,7 +96,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
         {/* Client Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente / Parceiro</label>
             <div className="relative">
                 <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
@@ -78,7 +106,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
                 onChange={handleChange}
                 type="text"
                 className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
-                placeholder="Ex: João da Silva"
+                placeholder={isOutsourced ? "Nome do Terceirizado" : "Ex: João da Silva"}
                 />
             </div>
           </div>
@@ -123,8 +151,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
         </div>
 
         {/* Financials & Dates */}
-        <div className="p-4 bg-indigo-50/50 rounded-lg border border-indigo-100">
-            <h3 className="text-sm font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <DollarSign size={16} /> Financeiro e Prazos
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -144,7 +172,18 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
                 </div>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Valor Pago (R$)</label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Valor Pago (R$)</label>
+                    <button
+                        type="button"
+                        onClick={handleMarkAsFullyPaid}
+                        className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded border border-green-200 transition-colors"
+                        title="Marcar como totalmente pago"
+                    >
+                        <CheckCircle2 size={12} />
+                        Pago Integral
+                    </button>
+                </div>
                 <div className="relative">
                     <input
                         required
@@ -183,7 +222,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, onSave, onC
             </div>
 
             {hasPending && (
-                <div className="mt-4 pt-4 border-t border-indigo-200 animate-fade-in">
+                <div className="mt-4 pt-4 border-t border-gray-200 animate-fade-in">
                     <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-orange-50 p-3 rounded-lg border border-orange-200">
                         <div className="flex items-center gap-2 text-orange-800">
                             <AlertCircle size={20} />

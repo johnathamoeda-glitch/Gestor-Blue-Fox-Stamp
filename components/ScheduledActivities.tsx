@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, ActivityPriority } from '../types';
 import { getActivities, saveActivity, deleteActivity, toggleActivityCompletion } from '../services/storageService';
-import { Plus, Trash2, Calendar, CheckSquare, Square, AlertCircle, MapPin, Scissors, ShoppingBag, Filter } from 'lucide-react';
+import { Plus, Trash2, Calendar, CheckSquare, Square, AlertCircle, MapPin, Scissors, ShoppingBag } from 'lucide-react';
+import { PeriodFilter } from './PeriodFilter';
+import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
 
 export const ScheduledActivities: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  
+  // Date Filter State
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterValue, setFilterValue] = useState<string>('');
   
   // Form State
   const [title, setTitle] = useState('');
@@ -30,39 +35,10 @@ export const ScheduledActivities: React.FC = () => {
     setActivities(loaded);
   };
 
-  // 1. Extract available months from activities
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    activities.forEach(act => {
-      const d = new Date(act.date);
-      // Format: "YYYY-MM"
-      months.add(`${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`);
-    });
-    // Sort descending
-    return Array.from(months).sort().reverse();
-  }, [activities]);
-
-  // 2. Filter activities based on selection
+  // Filter activities based on advanced selection
   const filteredActivities = useMemo(() => {
-    let filtered = activities;
-    
-    if (selectedMonth !== 'all') {
-      const [year, month] = selectedMonth.split('-');
-      filtered = activities.filter(act => {
-        const d = new Date(act.date);
-        return d.getFullYear() === parseInt(year) && d.getMonth() === parseInt(month);
-      });
-    }
-    
-    return filtered;
-  }, [activities, selectedMonth]);
-
-  // 3. Helper for label
-  const formatMonthLabel = (yearMonth: string) => {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month), 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
+    return filterListByDate(activities, 'date', filterType, filterValue);
+  }, [activities, filterType, filterValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +98,8 @@ export const ScheduledActivities: React.FC = () => {
     return <Calendar size={18} />;
   };
 
+  const periodLabel = useMemo(() => getPeriodLabel(filterType, filterValue), [filterType, filterValue]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -137,28 +115,12 @@ export const ScheduledActivities: React.FC = () => {
         </button>
       </div>
 
-       {/* Filter Section */}
-       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <h2 className="text-gray-700 font-semibold flex items-center gap-2 text-sm">
-            <Filter size={18} className="text-indigo-600" />
-            Filtrar Período:
-          </h2>
-          <div className="relative w-full sm:w-64">
-              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="pl-10 block w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border appearance-none cursor-pointer hover:bg-white transition-colors capitalize"
-              >
-              <option value="all">Todo o Período</option>
-              {availableMonths.map(monthStr => (
-                  <option key={monthStr} value={monthStr}>
-                  {formatMonthLabel(monthStr)}
-                  </option>
-              ))}
-              </select>
-          </div>
-      </div>
+       {/* New Filter Section */}
+       <PeriodFilter 
+            filterType={filterType} 
+            filterValue={filterValue} 
+            onFilterChange={(t, v) => { setFilterType(t); setFilterValue(v); }} 
+        />
 
       {/* Form Area */}
       {isFormOpen && (
@@ -239,9 +201,9 @@ export const ScheduledActivities: React.FC = () => {
              <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
                 <Calendar className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                 <h3 className="text-lg font-medium text-gray-900">
-                    {selectedMonth === 'all' 
+                    {filterType === 'all' 
                         ? 'Nenhuma atividade agendada' 
-                        : `Nenhuma atividade em ${formatMonthLabel(selectedMonth)}`}
+                        : `Nenhuma atividade encontrada em ${periodLabel}`}
                 </h3>
                 <p className="text-gray-500">Use o botão acima para adicionar lembretes de compras e viagens.</p>
             </div>

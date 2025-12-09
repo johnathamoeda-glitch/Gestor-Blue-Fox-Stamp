@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Order, OrderStatus } from '../types';
 import {  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { DollarSign, Package, AlertCircle, TrendingUp, CheckCircle, Calendar, Filter, ClipboardList } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, TrendingUp, CheckCircle, ClipboardList } from 'lucide-react';
+import { PeriodFilter } from './PeriodFilter';
+import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
 
 interface DashboardProps {
   orders: Order[];
@@ -10,39 +12,15 @@ interface DashboardProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterValue, setFilterValue] = useState<string>('');
 
-  // 1. Extract available months from orders
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    orders.forEach(order => {
-      const date = new Date(order.createdAt);
-      // Format: "YYYY-MM" for sorting/filtering
-      months.add(`${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`);
-    });
-    // Sort descending (newest first)
-    return Array.from(months).sort().reverse();
-  }, [orders]);
-
-  // 2. Filter orders based on selection
+  // Filter orders based on advanced selection
   const filteredOrders = useMemo(() => {
-    if (selectedMonth === 'all') return orders;
-    
-    const [year, month] = selectedMonth.split('-');
-    return orders.filter(order => {
-      const date = new Date(order.createdAt);
-      return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month);
-    });
-  }, [orders, selectedMonth]);
+    return filterListByDate(orders, 'createdAt', filterType, filterValue);
+  }, [orders, filterType, filterValue]);
 
-  // 3. Helper to format label (e.g., "2023-10" -> "Outubro 2023")
-  const formatMonthLabel = (yearMonth: string) => {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month), 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
-
-  // 4. Calculate stats based on FILTERED orders
+  // Calculate stats based on FILTERED orders
   const stats = useMemo(() => {
     const totalValue = filteredOrders.reduce((acc, o) => acc + o.totalValue, 0);
     const receivedValue = filteredOrders.reduce((acc, o) => acc + o.paidValue, 0);
@@ -69,31 +47,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
     { name: 'A Receber', value: stats.pendingValue },
   ];
 
+  const periodLabel = useMemo(() => getPeriodLabel(filterType, filterValue), [filterType, filterValue]);
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Filter Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4">
-        <h2 className="text-gray-700 font-semibold flex items-center gap-2">
-          <Filter size={20} className="text-indigo-600" />
-          Filtro de Período
-        </h2>
-        
-        <div className="relative w-full sm:w-64">
-          <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="pl-10 block w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border appearance-none cursor-pointer hover:bg-white transition-colors capitalize"
-          >
-            <option value="all">Todo o Período (Geral)</option>
-            {availableMonths.map(monthStr => (
-              <option key={monthStr} value={monthStr}>
-                {formatMonthLabel(monthStr)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* New Period Filter */}
+      <PeriodFilter 
+        filterType={filterType} 
+        filterValue={filterValue} 
+        onFilterChange={(t, v) => { setFilterType(t); setFilterValue(v); }} 
+      />
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -169,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Status dos Pedidos {selectedMonth !== 'all' && `(${formatMonthLabel(selectedMonth)})`}</h4>
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Status dos Pedidos {periodLabel && `(${periodLabel})`}</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               {statusData.length > 0 ? (
@@ -201,7 +164,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Fluxo Financeiro {selectedMonth !== 'all' && `(${formatMonthLabel(selectedMonth)})`}</h4>
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Fluxo Financeiro {periodLabel && `(${periodLabel})`}</h4>
           <div className="h-64">
              <ResponsiveContainer width="100%" height="100%">
                {filteredOrders.length > 0 ? (

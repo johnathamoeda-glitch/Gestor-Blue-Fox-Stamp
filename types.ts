@@ -6,8 +6,11 @@ export enum OrderStatus {
   CANCELLED = 'Cancelado'
 }
 
+export type OrderType = 'Casa' | 'Terceirizado';
+
 export interface Order {
   id: string;
+  orderType: OrderType; // Novo campo para identificar a origem
   customerName: string;
   customerPhone: string;
   description: string;
