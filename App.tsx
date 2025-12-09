@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Order, OrderType } from './types';
 import { getOrders, saveOrder, deleteOrder, initializeAuth, verifyLogin, syncAllFromCloud, getSettings } from './services/storageService';
 import { Dashboard } from './components/Dashboard';
@@ -53,6 +53,20 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
 
+  const refreshOrders = () => {
+    setOrders(getOrders());
+  };
+
+  const handleSync = useCallback(async () => {
+      // Avoid overlapping syncs if one is already in progress (optional check)
+      if (isSyncing) return;
+
+      setIsSyncing(true);
+      await syncAllFromCloud();
+      refreshOrders(); // Reload local state after sync
+      setIsSyncing(false);
+  }, [isSyncing]);
+
   useEffect(() => {
     // Ensure default users exist in local storage
     initializeAuth();
@@ -71,16 +85,20 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  const refreshOrders = () => {
-    setOrders(getOrders());
-  };
+  // Auto-Sync Interval (Every 90 seconds)
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
 
-  const handleSync = async () => {
-      setIsSyncing(true);
-      await syncAllFromCloud();
-      refreshOrders(); // Reload local state after sync
-      setIsSyncing(false);
-  };
+    if (currentUser && isCloudConnected) {
+      intervalId = setInterval(() => {
+        handleSync();
+      }, 90000); // 90000 ms = 1 minute 30 seconds
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [currentUser, isCloudConnected, handleSync]);
 
   const handleLogin = (u: string, p: string): boolean => {
     const isValid = verifyLogin(u, p);
