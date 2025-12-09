@@ -1,4 +1,5 @@
-import { Order, Activity, OrderStatus, ProfitCalculation, Expense, ChatMessage, UserCredentials } from '../types';
+import { Order, Activity, OrderStatus, ProfitCalculation, Expense, ChatMessage, UserCredentials, SystemSettings } from '../types';
+import { pushDataToCloud, pullDataFromCloud } from './supabaseClient';
 
 const STORAGE_KEY = 'estampa_gestor_orders';
 const ACTIVITIES_STORAGE_KEY = 'gestor_bfs_activities';
@@ -6,14 +7,74 @@ const PROFIT_CALC_STORAGE_KEY = 'gestor_bfs_profits';
 const EXPENSES_STORAGE_KEY = 'gestor_bfs_expenses';
 const CHAT_STORAGE_KEY = 'gestor_bfs_chat_messages';
 const USERS_STORAGE_KEY = 'gestor_bfs_users_v1';
+const SETTINGS_KEY = 'gestor_bfs_settings';
 
-// --- Helper for ID Generation (replaces crypto.randomUUID for better compatibility) ---
+// --- Helper for ID Generation ---
 export const generateId = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
+};
+
+// --- SETTINGS & SYNC ---
+
+export const getSettings = (): SystemSettings => {
+  try {
+    const data = localStorage.getItem(SETTINGS_KEY);
+    return data ? JSON.parse(data) : { supabaseUrl: '', supabaseKey: '', autoSync: false };
+  } catch {
+    return { supabaseUrl: '', supabaseKey: '', autoSync: false };
+  }
+};
+
+export const saveSettings = (settings: SystemSettings) => {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+};
+
+// Trigger a background sync for a specific entity type
+const triggerSync = (type: 'orders' | 'activities' | 'expenses' | 'profits' | 'chat') => {
+  const settings = getSettings();
+  if (!settings.autoSync || !settings.supabaseUrl) return;
+
+  // We fire and forget
+  setTimeout(async () => {
+    switch(type) {
+      case 'orders': await pushDataToCloud('orders', getOrders()); break;
+      case 'activities': await pushDataToCloud('activities', getActivities()); break;
+      case 'expenses': await pushDataToCloud('expenses', getExpenses()); break;
+      case 'profits': await pushDataToCloud('profit_calculations', getProfitCalculations()); break;
+      case 'chat': await pushDataToCloud('chat_messages', getChatMessages()); break;
+    }
+  }, 100);
+};
+
+export const syncAllFromCloud = async (): Promise<boolean> => {
+    try {
+        const settings = getSettings();
+        if (!settings.supabaseUrl) return false;
+
+        const orders = await pullDataFromCloud('orders');
+        if (orders) localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+
+        const activities = await pullDataFromCloud('activities');
+        if (activities) localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(activities));
+
+        const expenses = await pullDataFromCloud('expenses');
+        if (expenses) localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expenses));
+        
+        const profits = await pullDataFromCloud('profit_calculations');
+        if (profits) localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(profits));
+
+        const chat = await pullDataFromCloud('chat_messages');
+        if (chat) localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chat));
+
+        return true;
+    } catch (e) {
+        console.error("Sync all failed", e);
+        return false;
+    }
 };
 
 // --- Auth & Users ---
@@ -34,10 +95,7 @@ export const verifyLogin = (username: string, password: string): boolean => {
   try {
     const data = localStorage.getItem(USERS_STORAGE_KEY);
     const users: UserCredentials[] = data ? JSON.parse(data) : [];
-    
-    // Case insensitive username match, exact password match
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    
     if (user && user.password === password) {
       return true;
     }
@@ -51,9 +109,7 @@ export const updateUserPassword = (username: string, newPassword: string): boole
   try {
     const data = localStorage.getItem(USERS_STORAGE_KEY);
     const users: UserCredentials[] = data ? JSON.parse(data) : [];
-    
     const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
-    
     if (userIndex >= 0) {
       users[userIndex].password = newPassword;
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
@@ -72,7 +128,6 @@ export const getOrders = (): Order[] => {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
-    console.error("Failed to load orders", e);
     return [];
   }
 };
@@ -80,25 +135,20 @@ export const getOrders = (): Order[] => {
 export const saveOrder = (order: Order): void => {
   const orders = getOrders();
   const existingIndex = orders.findIndex(o => o.id === order.id);
-  
   if (existingIndex >= 0) {
     orders[existingIndex] = order;
   } else {
     orders.push(order);
   }
-  
   localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+  triggerSync('orders');
 };
 
 export const deleteOrder = (id: string): void => {
   const orders = getOrders();
   const newOrders = orders.filter(o => o.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
-};
-
-export const getOrderById = (id: string): Order | undefined => {
-  const orders = getOrders();
-  return orders.find(o => o.id === id);
+  triggerSync('orders');
 };
 
 // --- Activities ---
@@ -108,7 +158,6 @@ export const getActivities = (): Activity[] => {
     const data = localStorage.getItem(ACTIVITIES_STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
-    console.error("Failed to load activities", e);
     return [];
   }
 };
@@ -116,20 +165,20 @@ export const getActivities = (): Activity[] => {
 export const saveActivity = (activity: Activity): void => {
   const activities = getActivities();
   const existingIndex = activities.findIndex(a => a.id === activity.id);
-  
   if (existingIndex >= 0) {
     activities[existingIndex] = activity;
   } else {
     activities.push(activity);
   }
-  
   localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(activities));
+  triggerSync('activities');
 };
 
 export const deleteActivity = (id: string): void => {
   const activities = getActivities();
   const newActivities = activities.filter(a => a.id !== id);
   localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(newActivities));
+  triggerSync('activities');
 };
 
 export const toggleActivityCompletion = (id: string): void => {
@@ -137,7 +186,7 @@ export const toggleActivityCompletion = (id: string): void => {
   const activity = activities.find(a => a.id === id);
   if (activity) {
     activity.completed = !activity.completed;
-    saveActivity(activity);
+    saveActivity(activity); // handles sync
   }
 };
 
@@ -160,14 +209,13 @@ export const getProfitCalculationByOrderId = (orderId: string): ProfitCalculatio
 export const saveProfitCalculation = (calc: ProfitCalculation): void => {
   const calcs = getProfitCalculations();
   const existingIndex = calcs.findIndex(c => c.orderId === calc.orderId);
-  
   if (existingIndex >= 0) {
     calcs[existingIndex] = calc;
   } else {
     calcs.push(calc);
   }
-  
   localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(calcs));
+  triggerSync('profits');
 };
 
 // --- Expenses ---
@@ -177,7 +225,6 @@ export const getExpenses = (): Expense[] => {
     const data = localStorage.getItem(EXPENSES_STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
-    console.error("Failed to load expenses", e);
     return [];
   }
 };
@@ -185,20 +232,20 @@ export const getExpenses = (): Expense[] => {
 export const saveExpense = (expense: Expense): void => {
   const expenses = getExpenses();
   const existingIndex = expenses.findIndex(e => e.id === expense.id);
-  
   if (existingIndex >= 0) {
     expenses[existingIndex] = expense;
   } else {
     expenses.push(expense);
   }
-  
   localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expenses));
+  triggerSync('expenses');
 };
 
 export const deleteExpense = (id: string): void => {
   const expenses = getExpenses();
   const newExpenses = expenses.filter(e => e.id !== id);
   localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(newExpenses));
+  triggerSync('expenses');
 };
 
 // --- Chat Messages ---
@@ -208,7 +255,6 @@ export const getChatMessages = (): ChatMessage[] => {
     const data = localStorage.getItem(CHAT_STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
-    console.error("Failed to load chat messages", e);
     return [];
   }
 };
@@ -220,56 +266,17 @@ export const saveChatMessage = (message: ChatMessage): void => {
   if (existingIndex >= 0) {
     messages[existingIndex] = message;
   } else {
-    // Keep only last 100 messages to prevent LocalStorage overflow with base64 images
-    if (messages.length > 100) {
-        messages.shift();
-    }
+    if (messages.length > 100) messages.shift();
     messages.push(message);
   }
   
-  try {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-  } catch (e) {
-    alert("Erro de armazenamento: O arquivo pode ser muito grande para o navegador.");
-  }
+  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  triggerSync('chat');
 };
 
 export const deleteChatMessage = (id: string): void => {
   const messages = getChatMessages();
   const newMessages = messages.filter(m => m.id !== id);
   localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(newMessages));
-};
-
-// --- BACKUP & RESTORE SYSTEM ---
-
-export const exportAllData = (): string => {
-  const backupData = {
-    orders: getOrders(),
-    activities: getActivities(),
-    profitCalculations: getProfitCalculations(),
-    expenses: getExpenses(),
-    chatMessages: getChatMessages(),
-    users: localStorage.getItem(USERS_STORAGE_KEY) ? JSON.parse(localStorage.getItem(USERS_STORAGE_KEY)!) : [],
-    version: '1.0',
-    timestamp: Date.now()
-  };
-  return JSON.stringify(backupData, null, 2);
-};
-
-export const importAllData = (jsonString: string): boolean => {
-  try {
-    const data = JSON.parse(jsonString);
-    
-    if (data.orders) localStorage.setItem(STORAGE_KEY, JSON.stringify(data.orders));
-    if (data.activities) localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(data.activities));
-    if (data.profitCalculations) localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(data.profitCalculations));
-    if (data.expenses) localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(data.expenses));
-    if (data.chatMessages) localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(data.chatMessages));
-    if (data.users && data.users.length > 0) localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(data.users));
-    
-    return true;
-  } catch (e) {
-    console.error("Import failed", e);
-    return false;
-  }
+  triggerSync('chat');
 };

@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { X, Lock, Save, User, Check, Download, Upload, AlertTriangle } from 'lucide-react';
-import { updateUserPassword, exportAllData, importAllData } from '../services/storageService';
+import React, { useState } from 'react';
+import { X, Lock, Save, User, Check } from 'lucide-react';
+import { updateUserPassword } from '../services/storageService';
 
 interface UserProfileProps {
   username: string;
@@ -11,7 +11,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onClose }) =
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,46 +35,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onClose }) =
     } else {
       setMessage({ text: 'Erro ao atualizar senha.', type: 'error' });
     }
-  };
-
-  const handleExport = () => {
-    const dataStr = exportAllData();
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `Backup_BlueFox_${new Date().toISOString().slice(0,10)}.json`;
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    setMessage({ text: 'Backup baixado com sucesso! Envie este arquivo para o outro dispositivo.', type: 'info' });
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const jsonContent = event.target?.result as string;
-      if (confirm('ATENÇÃO: Isso irá substituir todos os dados atuais pelos dados do arquivo. Deseja continuar?')) {
-        const success = importAllData(jsonContent);
-        if (success) {
-          alert('Dados restaurados com sucesso! O sistema será recarregado.');
-          window.location.reload();
-        } else {
-          setMessage({ text: 'Erro ao ler o arquivo de backup.', type: 'error' });
-        }
-      }
-    };
-    reader.readAsText(file);
-    // Reset input
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -108,8 +67,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onClose }) =
                     message.type === 'success' ? 'bg-green-50 text-green-700' : 
                     message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
                 }`}>
-                    {message.type === 'success' ? <Check size={16} /> : 
-                     message.type === 'error' ? <X size={16} /> : <Download size={16} />}
+                    {message.type === 'success' ? <Check size={16} /> : <X size={16} />}
                     {message.text}
                 </div>
             )}
@@ -151,46 +109,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onClose }) =
                     Salvar Nova Senha
                 </button>
             </form>
-
-            {/* Backup Section */}
-            <div className="space-y-4 pt-4 border-t border-gray-100">
-                <h3 className="font-semibold text-gray-800 border-b border-gray-100 pb-2 flex items-center gap-2">
-                    <Download size={18} className="text-green-600" />
-                    Sincronizar Dados (Backup)
-                </h3>
-                
-                <div className="bg-orange-50 p-3 rounded-lg text-xs text-orange-800 flex gap-2">
-                    <AlertTriangle size={16} className="flex-shrink-0" />
-                    <p>Como o sistema roda offline, use isso para transferir dados entre Computador e Celular.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                        type="button"
-                        onClick={handleExport}
-                        className="flex flex-col items-center justify-center gap-2 px-4 py-4 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-indigo-200 transition-all group"
-                    >
-                        <Download size={24} className="text-gray-400 group-hover:text-indigo-600" />
-                        <span className="text-sm font-medium text-gray-600 group-hover:text-indigo-700">Baixar Dados</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handleImportClick}
-                        className="flex flex-col items-center justify-center gap-2 px-4 py-4 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-green-200 transition-all group"
-                    >
-                        <Upload size={24} className="text-gray-400 group-hover:text-green-600" />
-                        <span className="text-sm font-medium text-gray-600 group-hover:text-green-700">Restaurar Dados</span>
-                    </button>
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept=".json" 
-                        onChange={handleFileChange} 
-                    />
-                </div>
-            </div>
 
         </div>
       </div>
