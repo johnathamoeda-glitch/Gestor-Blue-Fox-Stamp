@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Order, OrderStatus, OrderType } from '../types';
 import { Save, X, User, AlertCircle, DollarSign, Tag, CheckCircle2 } from 'lucide-react';
+import { generateId } from '../services/storageService';
 
 interface OrderFormProps {
   existingOrder?: Order;
@@ -69,7 +70,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ existingOrder, initialOrde
       // Fallback for older records if edited
       orderType: formData.orderType || 'Casa', 
       createdBy: formData.createdBy || currentUser, // Ensure creator exists
-      id: existingOrder?.id || crypto.randomUUID(),
+      id: existingOrder?.id || generateId(),
     } as Order;
     onSave(orderToSave);
   };

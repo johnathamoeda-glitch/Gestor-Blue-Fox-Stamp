@@ -8,7 +8,7 @@ const CHAT_STORAGE_KEY = 'gestor_bfs_chat_messages';
 const USERS_STORAGE_KEY = 'gestor_bfs_users_v1';
 
 // --- Helper for ID Generation (replaces crypto.randomUUID for better compatibility) ---
-const generateId = (): string => {
+export const generateId = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);

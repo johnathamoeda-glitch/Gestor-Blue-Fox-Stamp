@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Expense, ExpenseCategory } from '../types';
-import { getExpenses, saveExpense, deleteExpense } from '../services/storageService';
+import { getExpenses, saveExpense, deleteExpense, generateId } from '../services/storageService';
 import { PeriodFilter } from './PeriodFilter';
 import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
 import { Plus, Trash2, DollarSign, ShoppingBag, Home, Wrench, MoreHorizontal, Wallet, User, Users, Printer } from 'lucide-react';
@@ -48,7 +47,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ currentUser }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newExpense: Expense = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       description,
       value: parseFloat(value),
       category,

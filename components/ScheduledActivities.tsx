@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, ActivityPriority } from '../types';
-import { getActivities, saveActivity, deleteActivity, toggleActivityCompletion } from '../services/storageService';
+import { getActivities, saveActivity, deleteActivity, toggleActivityCompletion, generateId } from '../services/storageService';
 import { Plus, Trash2, Calendar, CheckSquare, Square, AlertCircle, MapPin, Scissors, ShoppingBag, User } from 'lucide-react';
 import { PeriodFilter } from './PeriodFilter';
 import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
@@ -47,7 +47,7 @@ export const ScheduledActivities: React.FC<ScheduledActivitiesProps> = ({ curren
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newActivity: Activity = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title,
       description,
       date: new Date(date).getTime(),

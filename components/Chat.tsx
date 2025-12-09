@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, MessageType } from '../types';
-import { getChatMessages, saveChatMessage, deleteChatMessage } from '../services/storageService';
+import { getChatMessages, saveChatMessage, deleteChatMessage, generateId } from '../services/storageService';
 import { Send, Mic, Image as ImageIcon, Paperclip, MoreVertical, Trash2, Edit2, X, Play, Pause, FileVideo, User } from 'lucide-react';
 
 interface ChatProps {
@@ -65,7 +65,7 @@ export const Chat: React.FC<ChatProps> = ({ currentUser }) => {
     } else {
         // New Message
         const newMessage: ChatMessage = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             sender: currentUser,
             content,
             type,
