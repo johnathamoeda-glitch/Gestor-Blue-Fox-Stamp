@@ -239,3 +239,37 @@ export const deleteChatMessage = (id: string): void => {
   const newMessages = messages.filter(m => m.id !== id);
   localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(newMessages));
 };
+
+// --- BACKUP & RESTORE SYSTEM ---
+
+export const exportAllData = (): string => {
+  const backupData = {
+    orders: getOrders(),
+    activities: getActivities(),
+    profitCalculations: getProfitCalculations(),
+    expenses: getExpenses(),
+    chatMessages: getChatMessages(),
+    users: localStorage.getItem(USERS_STORAGE_KEY) ? JSON.parse(localStorage.getItem(USERS_STORAGE_KEY)!) : [],
+    version: '1.0',
+    timestamp: Date.now()
+  };
+  return JSON.stringify(backupData, null, 2);
+};
+
+export const importAllData = (jsonString: string): boolean => {
+  try {
+    const data = JSON.parse(jsonString);
+    
+    if (data.orders) localStorage.setItem(STORAGE_KEY, JSON.stringify(data.orders));
+    if (data.activities) localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(data.activities));
+    if (data.profitCalculations) localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(data.profitCalculations));
+    if (data.expenses) localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(data.expenses));
+    if (data.chatMessages) localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(data.chatMessages));
+    if (data.users && data.users.length > 0) localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(data.users));
+    
+    return true;
+  } catch (e) {
+    console.error("Import failed", e);
+    return false;
+  }
+};

@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Order, OrderStatus } from '../types';
 import {  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { DollarSign, Package, AlertCircle, TrendingUp, CheckCircle, ClipboardList } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, TrendingUp, CheckCircle, ClipboardList, Download, Upload, AlertTriangle } from 'lucide-react';
 import { PeriodFilter } from './PeriodFilter';
 import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
+import { exportAllData, importAllData } from '../services/storageService';
 
 interface DashboardProps {
   orders: Order[];
@@ -14,6 +15,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterValue, setFilterValue] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter orders based on advanced selection
   const filteredOrders = useMemo(() => {
@@ -49,8 +51,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders }) => {
 
   const periodLabel = useMemo(() => getPeriodLabel(filterType, filterValue), [filterType, filterValue]);
 
+  // Backup Handlers
+  const handleDownloadBackup = () => {
+    const dataStr = exportAllData();
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `Backup_BlueFox_${new Date().toISOString().slice(0,10)}.json`;
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const jsonContent = event.target?.result as string;
+      if (confirm('ATENÇÃO: Restaurar o backup substituirá todos os dados atuais. Deseja continuar?')) {
+        const success = importAllData(jsonContent);
+        if (success) {
+          alert('Dados restaurados com sucesso! A página será recarregada.');
+          window.location.reload();
+        } else {
+          alert('Erro ao processar arquivo de backup.');
+        }
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      
+      {/* SECURITY / BACKUP BANNER */}
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-start gap-3">
+            <div className="bg-orange-100 p-2 rounded-full text-orange-600 mt-1 md:mt-0">
+                <AlertTriangle size={24} />
+            </div>
+            <div>
+                <h3 className="font-bold text-orange-800 text-lg">Atenção: Faça Backup dos seus Dados!</h3>
+                <p className="text-orange-700/80 text-sm mt-1 max-w-xl">
+                    Este sistema salva tudo no seu navegador. Para acessar em outro celular ou computador, ou para garantir que nada seja perdido, 
+                    <strong> baixe o backup regularmente.</strong>
+                </p>
+            </div>
+        </div>
+        <div className="flex gap-3 w-full md:w-auto">
+            <button 
+                onClick={handleDownloadBackup}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors font-medium shadow-sm"
+            >
+                <Download size={18} />
+                Baixar Dados
+            </button>
+            <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium shadow-sm"
+            >
+                <Upload size={18} />
+                Restaurar
+            </button>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".json" 
+                onChange={handleRestoreBackup} 
+            />
+        </div>
+      </div>
+
       {/* New Period Filter */}
       <PeriodFilter 
         filterType={filterType} 

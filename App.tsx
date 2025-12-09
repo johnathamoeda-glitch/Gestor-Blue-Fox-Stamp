@@ -11,7 +11,7 @@ import { Expenses } from './components/Expenses';
 import { Chat } from './components/Chat';
 import { LoginScreen } from './components/LoginScreen';
 import { UserProfile } from './components/UserProfile';
-import { LayoutDashboard, PlusCircle, List, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, Wallet, MessageCircle, User, Settings } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, Wallet, MessageCircle, User, Settings, CloudDownload } from 'lucide-react';
 
 // Custom T-Shirt Icon Component
 const TShirtIcon = ({ size = 24, className = "" }: { size?: number, className?: string }) => (
@@ -137,7 +137,7 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* Novo Pedido Action (Moved to Top) */}
+        {/* Novo Pedido Action (Top) */}
         <button 
           onClick={openNewOrderModal}
           className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:shadow-md min-w-[70px] md:min-w-0 md:mb-6"
@@ -207,6 +207,16 @@ const App: React.FC = () => {
         >
           <MessageCircle size={24} />
           <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Bate Papo</span>
+        </button>
+
+        {/* Backup / Profile Shortcuts */}
+        <button 
+          onClick={() => setIsProfileOpen(true)}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 text-orange-500 hover:text-orange-600 hover:bg-orange-50`}
+          title="Backup e Dados"
+        >
+          <CloudDownload size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Backup</span>
         </button>
         
         <div className="hidden md:block flex-grow"></div>
