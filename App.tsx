@@ -6,22 +6,45 @@ import { OrderList } from './components/OrderList';
 import { OrderForm } from './components/OrderForm';
 import { ScheduledActivities } from './components/ScheduledActivities';
 import { Analytics } from './components/Analytics';
-import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, Database } from 'lucide-react';
+import { LoginScreen } from './components/LoginScreen';
+import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, Database, LogOut } from 'lucide-react';
 
 // Use standard Tailwind breakpoint classes in JSX for responsive layout logic if needed, 
 // but here we just toggle views.
 
 const App: React.FC = () => {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('bfs_auth_token') === 'authenticated';
+  });
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [view, setView] = useState<'dashboard' | 'list' | 'form' | 'activities' | 'analytics'>('dashboard');
   const [editingOrder, setEditingOrder] = useState<Order | undefined>(undefined);
 
   useEffect(() => {
-    refreshOrders();
-  }, []);
+    if (isAuthenticated) {
+      refreshOrders();
+    }
+  }, [isAuthenticated]);
 
   const refreshOrders = () => {
     setOrders(getOrders());
+  };
+
+  const handleLogin = (u: string, p: string): boolean => {
+    if (u === 'bluefox' && p === 'stamp375') {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('bfs_auth_token', 'authenticated');
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('bfs_auth_token');
+    setView('dashboard'); // Reset view on logout
   };
 
   const handleSaveOrder = (order: Order) => {
@@ -58,6 +81,11 @@ const App: React.FC = () => {
         }
     }
   };
+
+  // Login Guard
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
@@ -122,6 +150,15 @@ const App: React.FC = () => {
           <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Gerar Dados Teste</span>
         </button>
 
+        <button 
+          onClick={handleLogout}
+          className="hidden md:flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-all mb-2"
+          title="Sair do sistema"
+        >
+          <LogOut size={20} />
+          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Sair</span>
+        </button>
+
       </nav>
 
       {/* Main Content */}
@@ -135,6 +172,9 @@ const App: React.FC = () => {
                 </div>
                 <h1 className="text-lg font-bold text-gray-800">Gestor Blue Fox Stamp</h1>
             </div>
+            <button onClick={handleLogout} className="text-gray-500 hover:text-red-600">
+                <LogOut size={20} />
+            </button>
         </div>
 
         {view === 'dashboard' && (
