@@ -1,10 +1,11 @@
-import { Order, Activity, OrderStatus, ProfitCalculation, Expense, ChatMessage } from '../types';
+import { Order, Activity, OrderStatus, ProfitCalculation, Expense, ChatMessage, UserCredentials } from '../types';
 
 const STORAGE_KEY = 'estampa_gestor_orders';
 const ACTIVITIES_STORAGE_KEY = 'gestor_bfs_activities';
 const PROFIT_CALC_STORAGE_KEY = 'gestor_bfs_profits';
 const EXPENSES_STORAGE_KEY = 'gestor_bfs_expenses';
 const CHAT_STORAGE_KEY = 'gestor_bfs_chat_messages';
+const USERS_STORAGE_KEY = 'gestor_bfs_users_v1';
 
 // --- Helper for ID Generation (replaces crypto.randomUUID for better compatibility) ---
 const generateId = (): string => {
@@ -13,6 +14,55 @@ const generateId = (): string => {
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
+};
+
+// --- Auth & Users ---
+
+export const initializeAuth = (): void => {
+  const existingUsers = localStorage.getItem(USERS_STORAGE_KEY);
+  if (!existingUsers) {
+    const defaultUsers: UserCredentials[] = [
+      { username: 'Luzinho', password: 'fox375' },
+      { username: 'Luciano', password: 'fox375' },
+      { username: 'Joohn', password: 'fox375' }
+    ];
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
+  }
+};
+
+export const verifyLogin = (username: string, password: string): boolean => {
+  try {
+    const data = localStorage.getItem(USERS_STORAGE_KEY);
+    const users: UserCredentials[] = data ? JSON.parse(data) : [];
+    
+    // Case insensitive username match, exact password match
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    
+    if (user && user.password === password) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+};
+
+export const updateUserPassword = (username: string, newPassword: string): boolean => {
+  try {
+    const data = localStorage.getItem(USERS_STORAGE_KEY);
+    const users: UserCredentials[] = data ? JSON.parse(data) : [];
+    
+    const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+    
+    if (userIndex >= 0) {
+      users[userIndex].password = newPassword;
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
 };
 
 // --- Orders ---

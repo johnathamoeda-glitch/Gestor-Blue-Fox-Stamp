@@ -78,3 +78,8 @@ export interface ChatMessage {
   edited: boolean;
   replyTo?: string; // ID da mensagem respondida (opcional futura expansão)
 }
+
+export interface UserCredentials {
+  username: string;
+  password: string;
+}

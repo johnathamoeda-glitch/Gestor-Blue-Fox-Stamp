@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Order, OrderType } from './types';
-import { getOrders, saveOrder, deleteOrder } from './services/storageService';
+import { getOrders, saveOrder, deleteOrder, initializeAuth, verifyLogin } from './services/storageService';
 import { Dashboard } from './components/Dashboard';
 import { OrderList } from './components/OrderList';
 import { OrderForm } from './components/OrderForm';
@@ -10,7 +10,26 @@ import { ProfitCalculator } from './components/ProfitCalculator';
 import { Expenses } from './components/Expenses';
 import { Chat } from './components/Chat';
 import { LoginScreen } from './components/LoginScreen';
-import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, User, Wallet, MessageCircle } from 'lucide-react';
+import { UserProfile } from './components/UserProfile';
+import { LayoutDashboard, PlusCircle, List, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, Wallet, MessageCircle, User, Settings } from 'lucide-react';
+
+// Custom T-Shirt Icon Component
+const TShirtIcon = ({ size = 24, className = "" }: { size?: number, className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z" />
+  </svg>
+);
 
 const App: React.FC = () => {
   // Authentication State holding the username
@@ -26,7 +45,13 @@ const App: React.FC = () => {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<OrderType>('Casa');
 
+  // Profile Modal State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   useEffect(() => {
+    // Ensure default users exist in local storage
+    initializeAuth();
+
     if (currentUser) {
       refreshOrders();
     }
@@ -37,13 +62,15 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (u: string, p: string): boolean => {
-    const validUsers = ['Luzinho', 'Luciano', 'Joohn'];
-    // Normalizing input for case-insensitive username check
-    const normalizedUser = validUsers.find(user => user.toLowerCase() === u.toLowerCase());
+    const isValid = verifyLogin(u, p);
 
-    if (normalizedUser && p === 'fox375') {
-      setCurrentUser(normalizedUser);
-      sessionStorage.setItem('bfs_user_session', normalizedUser);
+    if (isValid) {
+      // Normalize user casing based on input to keep it consistent or strictly follow storage?
+      // For now, capitalize first letter for display niceness
+      const displayUser = u.charAt(0).toUpperCase() + u.slice(1);
+      
+      setCurrentUser(displayUser);
+      sessionStorage.setItem('bfs_user_session', displayUser);
       return true;
     }
     return false;
@@ -96,15 +123,28 @@ const App: React.FC = () => {
         
         <div className="hidden md:flex items-center gap-3 px-4 py-6 mb-6">
             <div className="bg-indigo-600 p-2 rounded-lg text-white">
-                <Printer size={24} />
+                <TShirtIcon size={24} />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-800 leading-tight">Gestor Blue Fox Stamp</h1>
-              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                <User size={10} /> Olá, {currentUser}
-              </p>
+              <button 
+                onClick={() => setIsProfileOpen(true)}
+                className="text-xs text-gray-400 mt-1 flex items-center gap-1 hover:text-indigo-600 transition-colors"
+                title="Editar Perfil / Trocar Senha"
+              >
+                <User size={10} /> Olá, {currentUser} <Settings size={10} className="ml-1" />
+              </button>
             </div>
         </div>
+
+        {/* Novo Pedido Action (Moved to Top) */}
+        <button 
+          onClick={openNewOrderModal}
+          className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:shadow-md min-w-[70px] md:min-w-0 md:mb-6"
+        >
+          <PlusCircle size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Novo Pedido</span>
+        </button>
 
         {/* 1. Painel */}
         <button 
@@ -168,15 +208,6 @@ const App: React.FC = () => {
           <MessageCircle size={24} />
           <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Bate Papo</span>
         </button>
-
-        {/* Novo Pedido Action */}
-        <button 
-          onClick={openNewOrderModal}
-          className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:mt-4 md:shadow-md min-w-[70px] md:min-w-0"
-        >
-          <PlusCircle size={24} />
-          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Novo Pedido</span>
-        </button>
         
         <div className="hidden md:block flex-grow"></div>
         
@@ -198,11 +229,13 @@ const App: React.FC = () => {
         <div className="md:hidden flex items-center justify-between mb-6">
              <div className="flex items-center gap-2">
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
-                    <Printer size={20} />
+                    <TShirtIcon size={20} />
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-gray-800">Gestor Blue Fox Stamp</h1>
-                  <span className="text-[10px] text-gray-500 block">Olá, {currentUser}</span>
+                  <button onClick={() => setIsProfileOpen(true)} className="text-[10px] text-gray-500 flex items-center gap-1">
+                    <User size={10} /> Olá, {currentUser}
+                  </button>
                 </div>
             </div>
             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600">
@@ -313,6 +346,14 @@ const App: React.FC = () => {
                   </div>
               </div>
           </div>
+      )}
+
+      {/* User Profile Modal */}
+      {isProfileOpen && currentUser && (
+          <UserProfile 
+            username={currentUser} 
+            onClose={() => setIsProfileOpen(false)} 
+          />
       )}
     </div>
   );
