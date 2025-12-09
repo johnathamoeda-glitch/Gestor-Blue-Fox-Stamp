@@ -7,8 +7,10 @@ import { OrderForm } from './components/OrderForm';
 import { ScheduledActivities } from './components/ScheduledActivities';
 import { Analytics } from './components/Analytics';
 import { ProfitCalculator } from './components/ProfitCalculator';
+import { Expenses } from './components/Expenses';
+import { Chat } from './components/Chat';
 import { LoginScreen } from './components/LoginScreen';
-import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, User } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, Printer, CalendarCheck, BarChart2, LogOut, Home, Briefcase, X, Calculator, User, Wallet, MessageCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   // Authentication State holding the username
@@ -17,7 +19,7 @@ const App: React.FC = () => {
   });
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [view, setView] = useState<'dashboard' | 'list' | 'form' | 'activities' | 'analytics' | 'calculator'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'list' | 'form' | 'activities' | 'analytics' | 'calculator' | 'expenses' | 'chat'>('dashboard');
   const [editingOrder, setEditingOrder] = useState<Order | undefined>(undefined);
   
   // Logic for selecting order type
@@ -90,7 +92,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800 relative">
       {/* Sidebar / Navigation */}
-      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 z-40 md:top-0 md:left-0 md:w-64 md:h-screen md:border-t-0 md:border-r flex md:flex-col justify-around md:justify-start md:p-4 shadow-lg md:shadow-none">
+      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 z-40 md:top-0 md:left-0 md:w-64 md:h-screen md:border-t-0 md:border-r flex md:flex-col justify-around md:justify-start md:p-4 shadow-lg md:shadow-none overflow-x-auto md:overflow-x-visible no-scrollbar">
         
         <div className="hidden md:flex items-center gap-3 px-4 py-6 mb-6">
             <div className="bg-indigo-600 p-2 rounded-lg text-white">
@@ -104,52 +106,76 @@ const App: React.FC = () => {
             </div>
         </div>
 
+        {/* 1. Painel */}
         <button 
           onClick={() => setView('dashboard')}
-          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'dashboard' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'dashboard' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
         >
           <LayoutDashboard size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Painel</span>
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Painel</span>
         </button>
 
-        <button 
-          onClick={() => setView('analytics')}
-          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'analytics' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
-        >
-          <BarChart2 size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Relatórios</span>
-        </button>
-
+        {/* 2. Pedidos */}
         <button 
           onClick={() => setView('list')}
-          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'list' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'list' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
         >
           <List size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Pedidos</span>
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Pedidos</span>
         </button>
 
-        <button 
-          onClick={() => setView('activities')}
-          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'activities' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
-        >
-          <CalendarCheck size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Atividades</span>
-        </button>
-
+        {/* 3. Calculadora */}
         <button 
           onClick={() => setView('calculator')}
-          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all ${view === 'calculator' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'calculator' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
         >
           <Calculator size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Calculadora</span>
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Calculadora</span>
         </button>
 
+        {/* 4. Gastos */}
+        <button 
+          onClick={() => setView('expenses')}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'expenses' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+        >
+          <Wallet size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Gastos</span>
+        </button>
+
+        {/* 5. Relatórios */}
+        <button 
+          onClick={() => setView('analytics')}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'analytics' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+        >
+          <BarChart2 size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Relatórios</span>
+        </button>
+
+        {/* 6. Atividades */}
+        <button 
+          onClick={() => setView('activities')}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'activities' ? 'text-indigo-600 md:bg-indigo-50' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}
+        >
+          <CalendarCheck size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Atividades</span>
+        </button>
+
+        {/* 7. Chat (Bate Papo) */}
+        <button 
+          onClick={() => setView('chat')}
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl transition-all min-w-[70px] md:min-w-0 ${view === 'chat' ? 'text-green-600 md:bg-green-50' : 'text-gray-500 hover:text-green-600 hover:bg-green-50'}`}
+        >
+          <MessageCircle size={24} />
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Bate Papo</span>
+        </button>
+
+        {/* Novo Pedido Action */}
         <button 
           onClick={openNewOrderModal}
-          className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:mt-4 md:shadow-md"
+          className="flex flex-col md:flex-row items-center md:gap-3 p-3 md:px-4 md:py-3 rounded-xl text-indigo-600 md:bg-indigo-600 md:text-white md:hover:bg-indigo-700 transition-all md:mt-4 md:shadow-md min-w-[70px] md:min-w-0"
         >
           <PlusCircle size={24} />
-          <span className="text-xs md:text-sm font-medium mt-1 md:mt-0">Novo Pedido</span>
+          <span className="text-[10px] md:text-sm font-medium mt-1 md:mt-0">Novo Pedido</span>
         </button>
         
         <div className="hidden md:block flex-grow"></div>
@@ -214,11 +240,19 @@ const App: React.FC = () => {
         )}
 
         {view === 'activities' && (
-           <ScheduledActivities />
+           <ScheduledActivities currentUser={currentUser || 'Sistema'} />
+        )}
+
+        {view === 'expenses' && (
+           <Expenses currentUser={currentUser || 'Desconhecido'} />
         )}
 
         {view === 'calculator' && (
             <ProfitCalculator orders={orders} />
+        )}
+
+        {view === 'chat' && (
+            <Chat currentUser={currentUser || 'Usuário'} />
         )}
 
         {view === 'form' && (

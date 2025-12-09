@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, ActivityPriority } from '../types';
 import { getActivities, saveActivity, deleteActivity, toggleActivityCompletion } from '../services/storageService';
-import { Plus, Trash2, Calendar, CheckSquare, Square, AlertCircle, MapPin, Scissors, ShoppingBag } from 'lucide-react';
+import { Plus, Trash2, Calendar, CheckSquare, Square, AlertCircle, MapPin, Scissors, ShoppingBag, User } from 'lucide-react';
 import { PeriodFilter } from './PeriodFilter';
 import { FilterType, filterListByDate, getPeriodLabel } from '../services/dateUtils';
 
-export const ScheduledActivities: React.FC = () => {
+interface ScheduledActivitiesProps {
+  currentUser: string;
+}
+
+export const ScheduledActivities: React.FC<ScheduledActivitiesProps> = ({ currentUser }) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   
@@ -48,7 +52,8 @@ export const ScheduledActivities: React.FC = () => {
       description,
       date: new Date(date).getTime(),
       priority,
-      completed: false
+      completed: false,
+      createdBy: currentUser
     };
     
     saveActivity(newActivity);
@@ -247,6 +252,11 @@ export const ScheduledActivities: React.FC = () => {
                                     <Calendar size={14} />
                                     {new Date(activity.date).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                                 </span>
+                                {activity.createdBy && (
+                                  <span className="flex items-center gap-1 bg-gray-50 px-1.5 rounded border border-gray-100" title="Criado por">
+                                    <User size={10} /> {activity.createdBy}
+                                  </span>
+                                )}
                                 <span className="hidden group-hover:inline-flex text-indigo-400 items-center gap-1">
                                     {getActivityIcon(activity.title)}
                                 </span>

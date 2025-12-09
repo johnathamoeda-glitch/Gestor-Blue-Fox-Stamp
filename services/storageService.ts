@@ -1,8 +1,10 @@
-import { Order, Activity, OrderStatus, ProfitCalculation } from '../types';
+import { Order, Activity, OrderStatus, ProfitCalculation, Expense, ChatMessage } from '../types';
 
 const STORAGE_KEY = 'estampa_gestor_orders';
 const ACTIVITIES_STORAGE_KEY = 'gestor_bfs_activities';
 const PROFIT_CALC_STORAGE_KEY = 'gestor_bfs_profits';
+const EXPENSES_STORAGE_KEY = 'gestor_bfs_expenses';
+const CHAT_STORAGE_KEY = 'gestor_bfs_chat_messages';
 
 // --- Helper for ID Generation (replaces crypto.randomUUID for better compatibility) ---
 const generateId = (): string => {
@@ -116,4 +118,74 @@ export const saveProfitCalculation = (calc: ProfitCalculation): void => {
   }
   
   localStorage.setItem(PROFIT_CALC_STORAGE_KEY, JSON.stringify(calcs));
+};
+
+// --- Expenses ---
+
+export const getExpenses = (): Expense[] => {
+  try {
+    const data = localStorage.getItem(EXPENSES_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error("Failed to load expenses", e);
+    return [];
+  }
+};
+
+export const saveExpense = (expense: Expense): void => {
+  const expenses = getExpenses();
+  const existingIndex = expenses.findIndex(e => e.id === expense.id);
+  
+  if (existingIndex >= 0) {
+    expenses[existingIndex] = expense;
+  } else {
+    expenses.push(expense);
+  }
+  
+  localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expenses));
+};
+
+export const deleteExpense = (id: string): void => {
+  const expenses = getExpenses();
+  const newExpenses = expenses.filter(e => e.id !== id);
+  localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(newExpenses));
+};
+
+// --- Chat Messages ---
+
+export const getChatMessages = (): ChatMessage[] => {
+  try {
+    const data = localStorage.getItem(CHAT_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error("Failed to load chat messages", e);
+    return [];
+  }
+};
+
+export const saveChatMessage = (message: ChatMessage): void => {
+  const messages = getChatMessages();
+  const existingIndex = messages.findIndex(m => m.id === message.id);
+  
+  if (existingIndex >= 0) {
+    messages[existingIndex] = message;
+  } else {
+    // Keep only last 100 messages to prevent LocalStorage overflow with base64 images
+    if (messages.length > 100) {
+        messages.shift();
+    }
+    messages.push(message);
+  }
+  
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  } catch (e) {
+    alert("Erro de armazenamento: O arquivo pode ser muito grande para o navegador.");
+  }
+};
+
+export const deleteChatMessage = (id: string): void => {
+  const messages = getChatMessages();
+  const newMessages = messages.filter(m => m.id !== id);
+  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(newMessages));
 };

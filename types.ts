@@ -1,3 +1,4 @@
+
 export enum OrderStatus {
   PENDING = 'Pendente',
   IN_PROGRESS = 'Em Produção',
@@ -42,6 +43,7 @@ export interface Activity {
   date: number; // Timestamp da data agendada
   priority: ActivityPriority;
   completed: boolean;
+  createdBy?: string;
 }
 
 export interface ProfitCalculation {
@@ -52,4 +54,27 @@ export interface ProfitCalculation {
   costPrint: number;
   costMisc: number;
   lastUpdated: number;
+}
+
+export type ExpenseCategory = 'Material' | 'Funcionário' | 'Maquinário' | 'Aluguel' | 'Manutenção' | 'Outros';
+
+export interface Expense {
+  id: string;
+  description: string;
+  value: number;
+  category: ExpenseCategory;
+  date: number;
+  createdBy: string;
+}
+
+export type MessageType = 'text' | 'image' | 'video' | 'audio';
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  content: string; // Texto ou Base64 da mídia
+  type: MessageType;
+  timestamp: number;
+  edited: boolean;
+  replyTo?: string; // ID da mensagem respondida (opcional futura expansão)
 }
