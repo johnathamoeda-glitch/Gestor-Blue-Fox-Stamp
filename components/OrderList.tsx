@@ -182,7 +182,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onEdit, onDelete }
                     <div className="flex lg:flex-col gap-2 border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
                         <button 
                             onClick={() => setSelectedOrderForMessage(order)}
-                            title="Gerar cobrança IA"
+                            title="Gerar cobrança"
                             className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center gap-2 lg:w-10 lg:h-10"
                         >
                              <MessageSquare size={18} />

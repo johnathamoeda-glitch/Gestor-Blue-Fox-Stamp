@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Order } from '../types';
-import { generatePaymentReminder } from '../services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { Order, OrderStatus } from '../types';
 import { MessageSquare, Copy, Check, X } from 'lucide-react';
 
 interface MessageGeneratorProps {
@@ -10,17 +9,47 @@ interface MessageGeneratorProps {
 
 export const MessageGenerator: React.FC<MessageGeneratorProps> = ({ order, onClose }) => {
   const [generatedText, setGeneratedText] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  React.useEffect(() => {
-    const fetchMessage = async () => {
-      setIsLoading(true);
-      const text = await generatePaymentReminder(order);
-      setGeneratedText(text);
-      setIsLoading(false);
+  useEffect(() => {
+    // Template-based message generation
+    const generateMessage = () => {
+      const remaining = order.totalValue - order.paidValue;
+      const firstName = order.customerName.split(' ')[0];
+      
+      let msg = `Olá ${firstName}, tudo bem? Aqui é da Gestor Blue Fox Stamp. 🦊\n\n`;
+      msg += `Estou passando referente ao seu pedido: *${order.description}*.\n`;
+      
+      // Status specific context
+      if (order.status === OrderStatus.READY) {
+         msg += `✅ *Seu pedido está pronto!* Pode vir retirar quando quiser.\n`;
+      } else if (order.status === OrderStatus.DELIVERED) {
+         msg += `🚀 Esperamos que tenha gostado do material entregue!\n`;
+      } else if (order.status === OrderStatus.IN_PROGRESS) {
+         msg += `⚙️ Seu pedido está em produção.\n`;
+      }
+
+      // Financial context
+      if (remaining > 0.01) {
+        msg += `\nLembramos que consta um saldo pendente de *R$ ${remaining.toFixed(2)}*.`;
+        
+        if (order.remainingPaymentDate) {
+            const date = new Date(order.remainingPaymentDate).toLocaleDateString('pt-BR');
+            msg += `\n📅 A data combinada para o acerto foi: ${date}.`;
+        }
+        
+        msg += `\nPodemos confirmar o pagamento?`;
+      } else {
+         if (order.status === OrderStatus.READY) {
+             msg += `\nO pagamento já está quitado. É só buscar!`;
+         }
+      }
+      
+      msg += `\n\nQualquer dúvida estou à disposição!`;
+      return msg;
     };
-    fetchMessage();
+
+    setGeneratedText(generateMessage());
   }, [order]);
 
   const handleCopy = () => {
@@ -30,7 +59,6 @@ export const MessageGenerator: React.FC<MessageGeneratorProps> = ({ order, onClo
   };
 
   const handleWhatsAppRedirect = () => {
-    // Basic format for cleaning phone number
     const cleanPhone = order.customerPhone.replace(/\D/g, '');
     const encodedText = encodeURIComponent(generatedText);
     window.open(`https://wa.me/55${cleanPhone}?text=${encodedText}`, '_blank');
@@ -42,7 +70,7 @@ export const MessageGenerator: React.FC<MessageGeneratorProps> = ({ order, onClo
         <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
           <h3 className="font-semibold flex items-center gap-2">
             <MessageSquare size={18} />
-            Assistente de Cobrança IA
+            Gerador de Mensagem
           </h3>
           <button onClick={onClose} className="hover:bg-indigo-700 p-1 rounded transition-colors">
             <X size={20} />
@@ -51,27 +79,19 @@ export const MessageGenerator: React.FC<MessageGeneratorProps> = ({ order, onClo
         
         <div className="p-6">
           <div className="mb-4">
-            <p className="text-sm text-gray-500 mb-2">Mensagem sugerida para {order.customerName}:</p>
+            <p className="text-sm text-gray-500 mb-2">Mensagem gerada para {order.customerName}:</p>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[120px] relative">
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full text-indigo-500 gap-2">
-                  <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                  Gerando mensagem...
-                </div>
-              ) : (
                 <textarea 
-                  className="w-full h-32 bg-transparent border-none focus:ring-0 text-sm text-gray-700 resize-none p-0"
+                  className="w-full h-40 bg-transparent border-none focus:ring-0 text-sm text-gray-700 resize-none p-0 focus:outline-none"
                   value={generatedText}
                   onChange={(e) => setGeneratedText(e.target.value)}
                 />
-              )}
             </div>
           </div>
 
           <div className="flex gap-3">
             <button
               onClick={handleCopy}
-              disabled={isLoading}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium text-sm"
             >
               {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
@@ -79,7 +99,6 @@ export const MessageGenerator: React.FC<MessageGeneratorProps> = ({ order, onClo
             </button>
             <button
               onClick={handleWhatsAppRedirect}
-              disabled={isLoading}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium text-sm shadow-sm"
             >
               <MessageSquare size={16} />
